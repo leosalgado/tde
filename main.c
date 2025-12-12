@@ -14,7 +14,7 @@ int menu(void);
 int menu2(void);
 void line();
 void line2();
-char city_name(int, int, int, char[*][*], int[*]);
+void city_name(int, int, int, char[*][*], int[*]);
 
 int main() {
 
@@ -22,7 +22,7 @@ int main() {
   FILE *out;
 
   int option = 1;
-  char cidade[V_SIZE][25];
+  char city[V_SIZE][25];
   int code[V_SIZE];
   int population[V_SIZE];
   char state[V_SIZE][2];
@@ -44,7 +44,7 @@ int main() {
   while (n_lines < V_SIZE) {
     fgets(line, 150, file);
     token = strtok(line, ";");
-    strcpy(cidade[n_lines], token);
+    strcpy(city[n_lines], token);
     token = strtok(NULL, ";");
     code[n_lines] = atoi(token);
     token = strtok(NULL, ";");
@@ -78,7 +78,7 @@ int main() {
       option = menu();
       switch (option) {
       case 1:
-        aux_code = query1(V_SIZE, 25, 2, 30, cidade, code, population, state,
+        aux_code = query1(V_SIZE, 25, 2, 30, city, code, population, state,
                           date, isolation);
         option_save = save();
         extra++;
@@ -89,7 +89,7 @@ int main() {
                 out);
           for (i = 0; i < V_SIZE; i++) {
             if (aux_code == code[i]) {
-              strcpy(line, cidade[i]);
+              strcpy(line, city[i]);
               strcat(line, ";");
               sprintf(code_STRING[i], "%d", code[i]);
               strcat(line, code_STRING[i]);
@@ -110,7 +110,7 @@ int main() {
         }
         break;
       case 2:
-        printf("\nAverage = %.2f", query2(V_SIZE, 25, 2, 30, cidade, code,
+        printf("\nAverage = %.2f", query2(V_SIZE, 25, 2, 30, city, code,
                                           population, state, date, isolation));
         break;
       case 3:
@@ -123,7 +123,7 @@ int main() {
       option = menu2();
       switch (option) {
       case 1:
-        aux_code = query1(V_SIZE, 25, 2, 30, cidade, code, population, state,
+        aux_code = query1(V_SIZE, 25, 2, 30, city, code, population, state,
                           date, isolation);
         option_save = save();
         if (option_save == 1) {
@@ -133,7 +133,7 @@ int main() {
                 out);
           for (i = 0; i < V_SIZE; i++) {
             if (aux_code == code[i]) {
-              strcpy(line, cidade[i]);
+              strcpy(line, city[i]);
               strcat(line, ";");
               sprintf(code_STRING[i], "%d", code[i]);
               strcat(line, code_STRING[i]);
@@ -154,14 +154,14 @@ int main() {
         }
         break;
       case 2:
-        printf("\nAverage = %.2f", query2(V_SIZE, 25, 2, 30, cidade, code,
+        printf("\nAverage = %.2f", query2(V_SIZE, 25, 2, 30, city, code,
                                           population, state, date, isolation));
         break;
       case 3:
         printf("\nBye!");
         break;
       case 4:
-        city_name(aux_code, V_SIZE, 25, cidade, code);
+        city_name(aux_code, V_SIZE, 25, city, code);
         printf("\nCity's average = %.2f",
                query3(aux_code, V_SIZE, code, population, isolation));
         break;
@@ -176,7 +176,7 @@ int main() {
   return 0;
 }
 
-char city_name(int cod, int lim, int lim2, char v[lim][lim2], int j[lim]) {
+void city_name(int cod, int lim, int lim2, char v[lim][lim2], int j[lim]) {
   int i;
   for (i = 0; i < lim; i++) {
     if (cod == j[i]) {
@@ -255,7 +255,7 @@ int menu() {
   int op;
   line();
   line2();
-  printf("*  Isolation data query  *\n");
+  printf("*  Isolation data research  *\n");
   line2();
   line();
   printf("\n[1] Search by city\n");
@@ -270,7 +270,7 @@ int menu2() {
   int op;
   line();
   line2();
-  printf("*  Isolation data query  *\n");
+  printf("*  Isolation data research  *\n");
   line2();
   line();
   printf("\n[1] Search by city\n");
@@ -284,19 +284,17 @@ int menu2() {
 
 void line() {
   int i;
-  for (i = 0; i <= 20; i++) {
+  for (i = 0; i <= 13; i++) {
     printf("*.");
   }
-  printf("*");
-  printf("\n");
+  printf("*\n");
 }
 
 void line2() {
   int i;
   printf("|");
-  for (i = 0; i <= 40; i++) {
+  for (i = 0; i <= 26; i++) {
     printf(" ");
   }
-  printf("|");
-  printf("\n");
+  printf("|\n");
 }
