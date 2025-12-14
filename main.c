@@ -174,17 +174,15 @@ void get_average_by_city(char *cities[]) {
   }
 
   float sum = 0;
-  char *city_name = NULL;
 
   for (int i = 0; i < CITY_LEN; i++) {
     row *copy = malloc(sizeof(row));
     tokenize(cities[i], copy);
-    city_name = copy->city;
     sum += copy->isolation;
     free(copy);
     copy = malloc(sizeof(row));
   }
-  printf("\nAverage in %s: %.3f%%\n", city_name, sum / CITY_LEN);
+  printf("\nAverage: %.3f%%\n", sum / CITY_LEN);
 }
 
 int main() {
@@ -232,7 +230,7 @@ int menu() {
   printf("\n");
   line();
   line2();
-  printf("*  Isolation data research  *\n");
+  printf("|  Isolation data research  |\n");
   line2();
   line();
   printf("\n[1] Search by city\n");
@@ -250,10 +248,11 @@ int menu() {
 
 void line() {
   int i;
-  for (i = 0; i <= 13; i++) {
-    printf("*.");
+  printf("+");
+  for (i = 0; i <= 26; i++) {
+    printf("-");
   }
-  printf("*\n");
+  printf("+\n");
 }
 
 void line2() {
