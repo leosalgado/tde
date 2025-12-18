@@ -4,9 +4,10 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#define CITY_LEN 672
+#define WIDTH 27
 #define MAX_LINE_LEN 106
 #define FILENAME "20220211_isolamento.csv"
+#define OUTPUT "out.csv"
 
 typedef struct {
   char *city;
@@ -15,251 +16,231 @@ typedef struct {
   char *state;
   char *date;
   int isolation;
-} row;
+} Row;
 
-void println_info(row *x);
-int menu();
-void line();
-void line2();
+void println_info(Row *x);
+void menu_prompt();
+char get_option();
 
-FILE *open_read_file(char *filename) {
-  FILE *file = fopen(filename, "r");
+FILE *xfopen(const char *filename, const char *mode) {
+  FILE *file = fopen(filename, mode);
   if (!file) {
     fprintf(stderr, "Error! Couldn't open file '%s' - %s\n", filename,
             strerror(errno));
-    exit(1);
   }
+
   return file;
 }
 
-FILE *open_write_file() {
-  const char *output = "out.csv";
-  struct stat buf;
-
-  FILE *out = fopen(output, "a");
-  if (!out) {
-    fprintf(stderr, "Error! Couldn't open file '%s' - %s\n", output,
-            strerror(errno));
-    exit(1);
-  }
-
-  if (stat(output, &buf) == 0) {
-    FILE *rfile = open_read_file(FILENAME);
-    char *line = malloc(sizeof(char) * MAX_LINE_LEN);
-    fgets(line, MAX_LINE_LEN, rfile);
-    fprintf(out, "%s", line);
-    fclose(rfile);
-  }
-
-  return out;
-}
-
-void tokenize(char *line, row *copy) {
+void tokenize(char *line, Row *row) {
   char *token = NULL;
+
   token = strtok(line, ";");
-  copy->city = malloc(strlen(token) + 1);
-  strcpy(copy->city, token);
+  row->city = malloc(strlen(token) + 1);
+  strcpy(row->city, token);
 
   token = strtok(NULL, ";");
-  copy->code = atoi(token);
+  row->code = atoi(token);
 
   token = strtok(NULL, ";");
-  copy->population = atoi(token);
+  row->population = atoi(token);
 
   token = strtok(NULL, ";");
-  copy->state = malloc(strlen(token) + 1);
-  strcpy(copy->state, token);
+  row->state = malloc(strlen(token) + 1);
+  strcpy(row->state, token);
 
   token = strtok(NULL, ";");
-  copy->date = malloc(strlen(token) + 1);
-  strcpy(copy->date, token);
+  row->date = malloc(strlen(token) + 1);
+  strcpy(row->date, token);
 
   token = strtok(NULL, "%%");
-  copy->isolation = atoi(token);
+  row->isolation = atoi(token);
 }
 
-void get_city(int usr_code, char *cities[]) {
-  FILE *file = open_read_file(FILENAME);
-
+void get_city(int usr_code, FILE *file) {
+  Row *row = malloc(sizeof(Row));
   char *line = malloc(sizeof(char) * MAX_LINE_LEN);
-  row *copy = malloc(sizeof(row));
-  char *token = NULL;
+  char *line_copy = malloc(sizeof(char) * MAX_LINE_LEN);
+  FILE *tmp = tmpfile();
 
   int cnt = 0;
 
   while (fgets(line, MAX_LINE_LEN, file)) {
-
-    char *line_copy = malloc(sizeof(char) * MAX_LINE_LEN);
     line_copy = strcpy(line_copy, line);
+    tokenize(line, row);
 
-    token = strtok(line, ";");
-    token = strtok(NULL, ";");
-    copy->code = *(int *)malloc(sizeof(token));
-    copy->code = atoi(token);
-
-    if (usr_code == copy->code) {
-      cities[cnt] = line_copy;
+    if (usr_code == row->code) {
+      fprintf(tmp, "%s", line_copy);
       cnt++;
     }
-
-    free(copy);
-    free(line);
-    copy = malloc(sizeof(row));
-    line = malloc(sizeof(char) * MAX_LINE_LEN);
   }
-  free(line);
-  fclose(file);
 
   printf("Found: %d\n", cnt);
-  if (cnt == 0)
+  if (cnt < 1)
     return;
 
   char save_op;
-  printf("Do you wish to write to the output file? [Y/n] ");
+  printf("Do you wish to save city in memory? [Y/n] ");
   scanf(" %c", &save_op);
 
   if (save_op == 'y' || save_op == 'Y') {
-    FILE *wfile = open_write_file();
-    for (int i = 0; i < CITY_LEN; i++) {
-      fprintf(wfile, "%s", cities[i]);
-    }
-    printf("File saved successfully!\n");
+    rewind(tmp);
+    FILE *wfile = xfopen(OUTPUT, "w");
+
+    while (fgets(line, MAX_LINE_LEN, tmp))
+      fprintf(wfile, "%s", line);
+
+    puts("\x1b[32m"
+         "\nCity saved successfully!"
+         "\x1b[0m");
+    fclose(tmp);
     fclose(wfile);
   }
+
+  free(row->date);
+  free(row->state);
+  free(row->city);
+  free(row);
+  free(line);
+  free(line_copy);
 }
 
-double get_average() {
-  FILE *file = open_read_file(FILENAME);
-
-  float sum = 0;
-  int line_idx = 0;
-
-  // Skip header
+void skip_header(FILE *file) {
   char *header = malloc(sizeof(char) * MAX_LINE_LEN);
   fgets(header, MAX_LINE_LEN, file);
   free(header);
+}
+
+double get_average(FILE *file) {
+  float sum = 0;
+  int line_idx = 0;
 
   char *line = malloc(sizeof(char) * MAX_LINE_LEN);
+  Row *copy = malloc(sizeof(Row));
 
   while (fgets(line, MAX_LINE_LEN, file)) {
-
-    row *copy = malloc(sizeof(row));
-
     tokenize(line, copy);
-
     println_info(copy);
 
     sum += copy->isolation;
     line_idx++;
-
-    free(copy->date);
-    free(copy->state);
-    free(copy->city);
-    free(copy);
-    free(line);
-    line = malloc(sizeof(char) * MAX_LINE_LEN);
   }
+
   free(line);
-  fclose(file);
+  free(copy->date);
+  free(copy->state);
+  free(copy->city);
+  free(copy);
 
   return sum / line_idx;
 }
 
-void get_average_by_city(char *cities[]) {
-  if (!cities[0]) {
-    printf("\x1b[33m"
-           "\nNo city in memory (Try option [1] first)\n"
+void handle_option(const char option) {
+  switch (option) {
+  case '1': {
+    int city_code;
+    printf("Enter city code: ");
+    scanf("%d", &city_code);
+    FILE *file = xfopen(FILENAME, "r");
+    get_city(city_code, file);
+    fclose(file);
+    break;
+  }
+  case '2': {
+    FILE *file = fopen(OUTPUT, "r");
+    if (!file) {
+      puts("\x1b[33m"
+           "\nNo city in memory, try option [1] first!"
            "\x1b[0m");
-    return;
+      break;
+    }
+    printf("\nCity Average: %.3f%%\n", get_average(file));
+    fclose(file);
+    break;
   }
-
-  float sum = 0;
-
-  for (int i = 0; i < CITY_LEN; i++) {
-    row *copy = malloc(sizeof(row));
-    tokenize(cities[i], copy);
-    sum += copy->isolation;
-    free(copy);
-    copy = malloc(sizeof(row));
+  case '3': {
+    FILE *file = xfopen(FILENAME, "r");
+    skip_header(file);
+    printf("\nTotal Average: %.3f%%\n", get_average(file));
+    fclose(file);
+    break;
   }
-  printf("\nAverage: %.3f%%\n", sum / CITY_LEN);
+  default:
+    puts("\x1b[31m"
+         "\n\nChoose a valid option!"
+         "\x1b[0m");
+    break;
+  }
+}
+
+void menu_loop() {
+  for (;;) {
+    menu_prompt();
+    char option = get_option();
+    if (option == 'q')
+      break;
+    handle_option(option);
+  }
 }
 
 int main() {
-  char *cities[CITY_LEN];
-
-  for (;;) {
-    int option = menu();
-    int city_code;
-
-    switch (option) {
-    case 1:
-      printf("Enter city code: ");
-      scanf("%d", &city_code);
-      get_city(city_code, cities);
-      break;
-    case 2:
-      get_average_by_city(cities);
-      break;
-    case 3:
-      printf("\nTotal Average: %.3f%%\n", get_average());
-      break;
-    case 4:
-      printf("Bye!\n");
-      return 0;
-    default:
-      printf("\x1b[31m"
-             "\nChoose a valid option!\n"
-             "\x1b[0m");
-      break;
-    }
-  }
+  menu_loop();
+  remove(OUTPUT);
+  puts("Bye!");
+  return 0;
 }
 
-void println_info(row *x) {
-  printf("\nCity: %s\n", x->city);
-  printf("Code: %d\n", x->code);
-  printf("Population: %d\n", x->population);
-  printf("State: %s\n", x->state);
-  printf("Date: %s\n", x->date);
-  printf("Isolation: %d%%\n", x->isolation);
+void println_info(Row *r) {
+  printf("\nCity: %s\n", r->city);
+  printf("Code: %d\n", r->code);
+  printf("Population: %d\n", r->population);
+  printf("State: %s\n", r->state);
+  printf("Date: %s\n", r->date);
+  printf("Isolation: %d%%\n", r->isolation);
 }
 
-int menu() {
-  int op;
-  printf("\n");
-  line();
-  line2();
-  printf("|  Isolation data research  |\n");
-  line2();
-  line();
-  printf("\n[1] Search by city\n");
-  printf("[2] Get city average\n");
-  printf("[3] Get total average\n");
-  printf("[4] Exit\n");
-  printf("\nChoose an option: ");
-  if (scanf("%d", &op) != 1) {
+void print_line(char c) {
+  for (int i = 0; i < WIDTH; i++)
+    putchar(c);
+}
+
+void hline() {
+  putchar('+');
+  print_line('-');
+  puts("+");
+}
+
+void vline() {
+  putchar('|');
+  print_line(' ');
+  puts("|");
+}
+
+void menu_prompt() {
+  puts("");
+  hline();
+  vline();
+  puts("|  Isolation data research  |");
+  vline();
+  hline();
+
+  puts("");
+  puts("[1] Search by city");
+  puts("[2] Get city average");
+  puts("[3] Get total average");
+  puts("");
+  puts("(Use 'q' to exit)");
+  puts("");
+  printf("Choose an option: ");
+}
+
+char get_option() {
+  char op;
+  if (scanf(" %c", &op) != 1) {
     while (getchar() != '\n') {
     }
     return -1;
   }
+
   return op;
-}
-
-void line() {
-  int i;
-  printf("+");
-  for (i = 0; i <= 26; i++) {
-    printf("-");
-  }
-  printf("+\n");
-}
-
-void line2() {
-  int i;
-  printf("|");
-  for (i = 0; i <= 26; i++) {
-    printf(" ");
-  }
-  printf("|\n");
 }
