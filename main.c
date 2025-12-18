@@ -18,9 +18,16 @@ typedef struct {
   int isolation;
 } Row;
 
-void println_info(Row *x);
 void menu_prompt();
-char get_option();
+
+void println_info(Row *r) {
+  printf("\nCity: %s\n", r->city);
+  printf("Code: %d\n", r->code);
+  printf("Population: %d\n", r->population);
+  printf("State: %s\n", r->state);
+  printf("Date: %s\n", r->date);
+  printf("Isolation: %d%%\n", r->isolation);
+}
 
 FILE *xfopen(const char *filename, const char *mode) {
   FILE *file = fopen(filename, mode);
@@ -30,6 +37,12 @@ FILE *xfopen(const char *filename, const char *mode) {
   }
 
   return file;
+}
+
+void skip_header(FILE *file) {
+  char *header = malloc(sizeof(char) * MAX_LINE_LEN);
+  fgets(header, MAX_LINE_LEN, file);
+  free(header);
 }
 
 void tokenize(char *line, Row *row) {
@@ -105,32 +118,26 @@ void get_city(int usr_code, FILE *file) {
   free(line_copy);
 }
 
-void skip_header(FILE *file) {
-  char *header = malloc(sizeof(char) * MAX_LINE_LEN);
-  fgets(header, MAX_LINE_LEN, file);
-  free(header);
-}
-
 double get_average(FILE *file) {
   float sum = 0;
   int line_idx = 0;
 
   char *line = malloc(sizeof(char) * MAX_LINE_LEN);
-  Row *copy = malloc(sizeof(Row));
+  Row *row = malloc(sizeof(Row));
 
   while (fgets(line, MAX_LINE_LEN, file)) {
-    tokenize(line, copy);
-    println_info(copy);
+    tokenize(line, row);
+    println_info(row);
 
-    sum += copy->isolation;
+    sum += row->isolation;
     line_idx++;
   }
 
+  free(row->date);
+  free(row->state);
+  free(row->city);
+  free(row);
   free(line);
-  free(copy->date);
-  free(copy->state);
-  free(copy->city);
-  free(copy);
 
   return sum / line_idx;
 }
@@ -173,6 +180,17 @@ void handle_option(const char option) {
   }
 }
 
+char get_option() {
+  char op;
+  if (scanf(" %c", &op) != 1) {
+    while (getchar() != '\n')
+      ;
+    return -1;
+  }
+
+  return op;
+}
+
 void menu_loop() {
   for (;;) {
     menu_prompt();
@@ -188,15 +206,6 @@ int main() {
   remove(OUTPUT);
   puts("Bye!");
   return 0;
-}
-
-void println_info(Row *r) {
-  printf("\nCity: %s\n", r->city);
-  printf("Code: %d\n", r->code);
-  printf("Population: %d\n", r->population);
-  printf("State: %s\n", r->state);
-  printf("Date: %s\n", r->date);
-  printf("Isolation: %d%%\n", r->isolation);
 }
 
 void print_line(char c) {
@@ -232,15 +241,4 @@ void menu_prompt() {
   puts("(Use 'q' to exit)");
   puts("");
   printf("Choose an option: ");
-}
-
-char get_option() {
-  char op;
-  if (scanf(" %c", &op) != 1) {
-    while (getchar() != '\n') {
-    }
-    return -1;
-  }
-
-  return op;
 }
