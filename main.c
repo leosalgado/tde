@@ -11,10 +11,10 @@
 
 typedef struct {
   char *city;
-  int code;
-  int population;
   char *state;
   char *date;
+  int code;
+  int population;
   int isolation;
 } Row;
 
@@ -34,6 +34,7 @@ FILE *xfopen(const char *filename, const char *mode) {
   if (!file) {
     fprintf(stderr, "Error! Couldn't open file '%s' - %s\n", filename,
             strerror(errno));
+    exit(1);
   }
 
   return file;
@@ -45,12 +46,23 @@ void skip_header(FILE *file) {
   free(header);
 }
 
+int realloc_and_copy_string(char **dest, const char *src) {
+  size_t len = strlen(src) + 1;
+  char *tmp = realloc(*dest, len);
+  if (tmp == NULL)
+    return 1;
+
+  *dest = tmp;
+  memcpy(*dest, src, len);
+  return 0;
+}
+
 void tokenize(char *line, Row *row) {
-  char *token = NULL;
+  char *token;
 
   token = strtok(line, ";");
-  row->city = malloc(strlen(token) + 1);
-  strcpy(row->city, token);
+  if (realloc_and_copy_string(&row->city, token))
+    return;
 
   token = strtok(NULL, ";");
   row->code = atoi(token);
@@ -59,27 +71,59 @@ void tokenize(char *line, Row *row) {
   row->population = atoi(token);
 
   token = strtok(NULL, ";");
-  row->state = malloc(strlen(token) + 1);
-  strcpy(row->state, token);
+  if (realloc_and_copy_string(&row->state, token))
+    return;
 
   token = strtok(NULL, ";");
-  row->date = malloc(strlen(token) + 1);
-  strcpy(row->date, token);
+  if (realloc_and_copy_string(&row->date, token))
+    return;
 
-  token = strtok(NULL, "%%");
+  token = strtok(NULL, "%");
   row->isolation = atoi(token);
+}
+
+void row_init(Row *row) {
+  row->city = NULL;
+  row->state = NULL;
+  row->date = NULL;
+}
+
+void row_clear(Row *row) {
+  if (!row)
+    return;
+
+  free(row->city);
+  free(row->state);
+  free(row->date);
+
+  row_init(row);
+}
+
+void row_destroy(Row *row) {
+  if (!row)
+    return;
+
+  row_clear(row);
+  free(row);
 }
 
 void get_city(int usr_code, FILE *file) {
   Row *row = malloc(sizeof(Row));
   char *line = malloc(sizeof(char) * MAX_LINE_LEN);
   char *line_copy = malloc(sizeof(char) * MAX_LINE_LEN);
+  if (!row || !line || !line_copy)
+    goto cleanup;
+
+  row_init(row);
+
   FILE *tmp = tmpfile();
+  if (!tmp)
+    goto cleanup;
 
   int cnt = 0;
 
   while (fgets(line, MAX_LINE_LEN, file)) {
-    line_copy = strcpy(line_copy, line);
+    strcpy(line_copy, line);
     tokenize(line, row);
 
     if (usr_code == row->code) {
@@ -90,7 +134,7 @@ void get_city(int usr_code, FILE *file) {
 
   printf("Found: %d\n", cnt);
   if (cnt < 1)
-    return;
+    goto cleanup;
 
   char save_op;
   printf("Do you wish to save city in memory? [Y/n] ");
@@ -106,24 +150,28 @@ void get_city(int usr_code, FILE *file) {
     puts("\x1b[32m"
          "\nCity saved successfully!"
          "\x1b[0m");
-    fclose(tmp);
     fclose(wfile);
   }
 
-  free(row->date);
-  free(row->state);
-  free(row->city);
-  free(row);
+cleanup:
+  if (tmp)
+    fclose(tmp);
+  if (row)
+    row_destroy(row);
   free(line);
   free(line_copy);
 }
 
 double get_average(FILE *file) {
-  float sum = 0;
+  float sum = 0.0F;
   int line_idx = 0;
 
-  char *line = malloc(sizeof(char) * MAX_LINE_LEN);
   Row *row = malloc(sizeof(Row));
+  char *line = malloc(sizeof(char) * MAX_LINE_LEN);
+  if (!row || !line)
+    goto cleanup;
+
+  row_init(row);
 
   while (fgets(line, MAX_LINE_LEN, file)) {
     tokenize(line, row);
@@ -133,11 +181,13 @@ double get_average(FILE *file) {
     line_idx++;
   }
 
-  free(row->date);
-  free(row->state);
-  free(row->city);
-  free(row);
+cleanup:
+  if (row)
+    row_destroy(row);
   free(line);
+
+  if (line_idx == 0)
+    return 0.0;
 
   return sum / line_idx;
 }
